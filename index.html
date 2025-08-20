@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Service Invoice Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #00ff88;
+            --secondary-color: #00ccff;
+            --background-dark: #0a0a0a;
+            --background-light: #1a1a1a;
+            --background-card: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: #333;
+            --danger-color: #ff4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        .header {
+            background: linear-gradient(135deg, var(--background-light) 0%, var(--background-card) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(0, 255, 255, 0.1);
+        }
+
+        .company-info { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .company-details h1 { color: var(--primary-color); font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        .company-details p { color: var(--text-secondary); margin-bottom: 5px; }
+
+        .nav-tabs { display: flex; background: var(--background-light); border-radius: 12px; margin-bottom: 30px; overflow: hidden; border: 1px solid var(--border-color); }
+        .nav-tab { flex: 1; padding: 15px 20px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .nav-tab.active { background: linear-gradient(135deg, var(--primary-color), #00b8c5); color: var(--background-dark); font-weight: bold; }
+        .nav-tab:hover:not(.active) { background: var(--border-color); color: #fff; }
+
+        .tab-content { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: linear-gradient(135deg, var(--background-light) 0%, var(--background-card) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+        .card h3 { color: var(--primary-color); margin-bottom: 20px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+
+        .form-group, .form-row { margin-bottom: 20px; }
+        .form-row { display: flex; gap: 20px; flex-wrap: wrap; }
+        .form-col { flex: 1; min-width: 250px; }
+
+        label { display: block; margin-bottom: 8px; color: var(--secondary-color); font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 12px; background: #0f0f0f; border: 2px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 16px; transition: all 0.3s ease; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 10px rgba(0, 255, 136, 0.2); }
+
+        .service-table, .history-table { width: 100%; background: #0f0f0f; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+        .service-table th, .history-table th { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: #000; padding: 15px 10px; font-weight: bold; text-align: left; }
+        .service-table td, .history-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); }
+        .service-table tr:hover, .history-table tr:hover { background: rgba(0, 255, 136, 0.05); }
+
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; margin-right: 10px; margin-bottom: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: #000; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 255, 136, 0.3); }
+        .btn-secondary { background: linear-gradient(135deg, #333, #555); color: #fff; }
+        .btn-secondary:hover { background: linear-gradient(135deg, #555, #777); }
+        .btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+        .btn-danger:hover { background: linear-gradient(135deg, #ff6666, #ff0000); }
+
+        .invoice-preview { background: #fff; color: #000; padding: 40px; margin: 20px 0; border-radius: 12px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); }
+        .invoice-header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+        .invoice-title { font-size: 2rem; font-weight: bold; }
+        .invoice-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .invoice-table th, .invoice-table td { border: 1px solid #000; padding: 10px; text-align: left; }
+        .invoice-table th { background: #f0f0f0; }
+        .invoice-footer { margin-top: 40px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 20px; }
+
+        .hidden { display: none !important; }
+
+        #notification-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 15px 20px; border-radius: 8px; color: #fff; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transform: translateX(100%); animation: slideIn 0.5s forwards, fadeOut 0.5s 4.5s forwards; }
+        .toast.success { background: linear-gradient(135deg, #28a745, #218838); }
+        .toast.error { background: linear-gradient(135deg, #dc3545, #c82333); }
+
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateX(100%); } }
+
+        .invoice-number-display { font-size: 1.2rem; color: var(--primary-color); font-weight: bold; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="company-info">
+                <div class="company-details">
+                    <h1 id="companyName">TechService Pro</h1>
+                    <p id="companyAddress">123 Tech Street, Digital City, TC 12345</p>
+                    <p id="companyContact"><i class="fas fa-phone"></i> +1 (555) 123-4567 | <i class="fas fa-envelope"></i> info@techservice.com</p>
+                    <p id="companyWhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp: +1 (555) 987-6543</p>
+                </div>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('invoice')"><i class="fas fa-file-invoice"></i> Invoice</button>
+            <button class="nav-tab" onclick="showTab('history')"><i class="fas fa-history"></i> History</button>
+            <button class="nav-tab" onclick="showTab('settings')"><i class="fas fa-cog"></i> Settings</button>
+        </nav>
+
+        <main>
+            <div id="invoice-tab" class="tab-content active">
+                <div class="card">
+                    <h3><i class="fas fa-user-circle"></i> Customer Information</h3>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="customerName">Customer Name</label>
+                            <input type="text" id="customerName" placeholder="Enter customer name">
+                        </div>
+                        <div class="form-col">
+                            <label for="customerWhatsApp">WhatsApp Number</label>
+                            <input type="text" id="customerWhatsApp" placeholder="Enter WhatsApp number">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerAddress">Address</label>
+                        <textarea id="customerAddress" rows="3" placeholder="Enter customer address"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Invoice Number</label>
+                        <div id="currentInvoiceNumber" class="invoice-number-display"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-tools"></i> Service Selection</h3>
+                    <div class="form-group">
+                        <label for="serviceType">Select Service Type</label>
+                        <select id="serviceType" onchange="loadServiceItems()">
+                            <option value="">-- Select Service --</option>
+                            <option value="CCTV">CCTV Installation</option>
+                            <option value="Electrical Wiring">Electrical Wiring</option>
+                            <option value="Computer Repair">Computer Repair</option>
+                        </select>
+                    </div>
+                    <div id="itemsTable" class="hidden">
+                        <h4 style="color: var(--secondary-color); margin-bottom: 15px;">Available Items</h4>
+                        <div style="overflow-x: auto;">
+                            <table class="service-table">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                        <th>Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="totals hidden">
+                    <span id="subtotal">0.00</span>
+                    <span id="serviceFee">500.00</span>
+                    <span id="taxPercent">18</span>
+                    <span id="taxAmount">0.00</span>
+                    <span id="grandTotal">0.00</span>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-primary" onclick="generatePDF()"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                    <button class="btn btn-primary" onclick="printInvoice()"><i class="fas fa-print"></i> Print Invoice</button>
+                    <button class="btn btn-primary" onclick="sendWhatsApp()"><i class="fab fa-whatsapp"></i> Send via WhatsApp</button>
+                    <button class="btn btn-secondary" onclick="saveInvoice()"><i class="fas fa-save"></i> Save to History</button>
+                    <button class="btn btn-danger" onclick="clearForm(true)"><i class="fas fa-trash-alt"></i> Clear All</button>
+                </div>
+
+                <div id="invoicePreview" class="invoice-preview hidden"></div>
+            </div>
+
+            <div id="history-tab" class="tab-content">
+                <div class="card">
+                    <h3><i class="fas fa-history"></i> Invoice History</h3>
+                    <div class="form-row" style="align-items: flex-end;">
+                        <div class="form-col">
+                           <label for="historySearch">Search Invoices</label>
+                           <input type="text" id="historySearch" placeholder="Search by customer name or invoice number..." onkeyup="filterHistory()">
+                        </div>
+                        <div class="form-col" style="flex: 0 1 auto;">
+                           <button class="btn btn-danger" onclick="clearHistory()"><i class="fas fa-trash-alt"></i> Clear History</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; margin-top: 20px;">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Service</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-tab" class="tab-content">
+                <div class="card">
+                    <h3><i class="fas fa-cog"></i> Company Settings</h3>
+                    <div class="settings-form">
+                        <div class="form-group"><label for="settingsCompanyName">Company Name</label><input type="text" id="settingsCompanyName"></div>
+                        <div class="form-group"><label for="settingsCompanyAddress">Company Address</label><textarea id="settingsCompanyAddress" rows="3"></textarea></div>
+                        <div class="form-group"><label for="settingsCompanyContact">Contact Details</label><input type="text" id="settingsCompanyContact"></div>
+                        <div class="form-group"><label for="settingsCompanyWhatsApp">WhatsApp Number</label><input type="text" id="settingsCompanyWhatsApp"></div>
+                        <div class="form-group"><label for="settingsServiceFee">Default Service Fee (₹)</label><input type="number" id="settingsServiceFee" min="0" step="0.01"></div>
+                        <div class="form-group"><label for="settingsTaxPercent">Tax Percentage (%)</label><input type="number" id="settingsTaxPercent" min="0" max="100" step="0.01"></div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
+                        <button class="btn btn-secondary" onclick="loadSettings()"><i class="fas fa-sync-alt"></i> Reset to Saved</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+
+    <script src="items.js"></script>
+    <script>
+        // Global Variables
+        let selectedItems = [];
+        let invoiceCounter = parseInt(localStorage.getItem('svc_invoice_counter') || '1001');
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadHistory();
+            updateTotals();
+            updateInvoiceNumberDisplay();
+        });
+
+        // --- Core Functions --- //
+
+        // මෙම සම්පූර්ණ ශ්‍රිතයම ප්‍රතිස්ථාපනය කරන්න (Replace this entire function)
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+
+    // Show selected tab content
+    document.getElementById(tabName + '-tab').classList.add('active');
+
+    // *** නිවැරදි කිරීම (The Fix) ***
+    // 'event.target' මත රඳා නොපවතින ලෙස, ලබාදුන් නම ('tabName') අනුව නිවැරදි ටැබ් බොත්තම සොයා active කිරීම
+    const tabButton = document.querySelector(`.nav-tab[onclick="showTab('${tabName}')"]`);
+    if (tabButton) {
+        tabButton.classList.add('active');
+    }
+}
+
+        function loadServiceItems() {
+            const serviceType = document.getElementById('serviceType').value;
+            const itemsTable = document.getElementById('itemsTable');
+            const tableBody = document.getElementById('itemsTableBody');
+
+            tableBody.innerHTML = '';
+            if (!serviceType) {
+                itemsTable.classList.add('hidden');
+                return;
+            }
+
+            const items = ITEM_CATALOG[serviceType] || [];
+            items.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox" id="item_${index}" onchange="toggleItem(${index}, '${serviceType}')"></td>
+                    <td>${item.code}</td>
+                    <td>${item.description}</td>
+                    <td><input type="number" class="qty-input" id="qty_${index}" min="1" value="1" disabled onchange="updateItemTotal(${index}, '${serviceType}')"></td>
+                `;
+                tableBody.appendChild(row);
+            });
+            itemsTable.classList.remove('hidden');
+        }
+        
+        function toggleItem(index, serviceType) {
+            const checkbox = document.getElementById(`item_${index}`);
+            const qtyInput = document.getElementById(`qty_${index}`);
+            const item = ITEM_CATALOG[serviceType][index];
+
+            const itemIndexInSelected = selectedItems.findIndex(selectedItem => selectedItem.index === index && selectedItem.code === item.code);
+
+            if (checkbox.checked && itemIndexInSelected === -1) {
+                qtyInput.disabled = false;
+                qtyInput.focus();
+                selectedItems.push({ ...item, quantity: parseInt(qtyInput.value), index: index });
+            } else if (!checkbox.checked && itemIndexInSelected > -1) {
+                qtyInput.disabled = true;
+                qtyInput.value = 1;
+                selectedItems.splice(itemIndexInSelected, 1);
+            }
+            updateTotals();
+            updateInvoicePreview();
+        }
+
+        function updateItemTotal(index, serviceType) {
+            const qtyInput = document.getElementById(`qty_${index}`);
+            const quantity = parseInt(qtyInput.value) || 0;
+            const item = ITEM_CATALOG[serviceType][index];
+            
+            const itemIndexInSelected = selectedItems.findIndex(selectedItem => selectedItem.index === index && selectedItem.code === item.code);
+
+            if (itemIndexInSelected !== -1) {
+                selectedItems[itemIndexInSelected].quantity = quantity;
+            }
+            updateTotals();
+            updateInvoicePreview();
+        }
+
+        function updateTotals() {
+            let subtotal = selectedItems.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+            const serviceFee = parseFloat(document.getElementById('serviceFee').textContent) || 0;
+            const taxPercent = parseFloat(document.getElementById('taxPercent').textContent) || 0;
+            const beforeTax = subtotal + serviceFee;
+            const taxAmount = (beforeTax * taxPercent) / 100;
+            const grandTotal = beforeTax + taxAmount;
+
+            document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('taxAmount').textContent = taxAmount.toFixed(2);
+            document.getElementById('grandTotal').textContent = grandTotal.toFixed(2);
+        }
+
+        function updateInvoicePreview() {
+            const preview = document.getElementById('invoicePreview');
+            if (selectedItems.length === 0) {
+                preview.classList.add('hidden');
+                return;
+            }
+
+            const customerName = document.getElementById('customerName').value;
+            const customerAddress = document.getElementById('customerAddress').value;
+            const customerWhatsApp = document.getElementById('customerWhatsApp').value;
+            const currentDate = new Date();
+            const invoiceNumber = `INV-${invoiceCounter}`;
+
+            let itemsHTML = selectedItems.map(item => `
+                <tr>
+                    <td>${item.code}</td>
+                    <td>${item.description}</td>
+                    <td>${item.quantity}</td>
+                </tr>`).join('');
+
+            preview.innerHTML = `
+                <header class="invoice-header">
+                    <div>
+                        <h1 class="invoice-title">${document.getElementById('companyName').textContent}</h1>
+                        <p>${document.getElementById('companyAddress').textContent}</p>
+                        <p>${document.getElementById('companyContact').textContent}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h2>INVOICE</h2>
+                        <p><strong>Invoice #:</strong> ${invoiceNumber}</p>
+                        <p><strong>Date:</strong> ${currentDate.toLocaleDateString()}</p>
+                        <p><strong>Service:</strong> ${document.getElementById('serviceType').value}</p>
+                    </div>
+                </header>
+                <div style="margin-bottom: 30px;">
+                    <h3>Bill To:</h3>
+                    <p><strong>${customerName || 'N/A'}</strong></p>
+                    <p>${customerAddress || 'N/A'}</p>
+                    <p>WhatsApp: ${customerWhatsApp || 'N/A'}</p>
+                </div>
+                <table class="invoice-table">
+                    <thead><tr><th>Code</th><th>Description</th><th>Qty</th></tr></thead>
+                    <tbody>${itemsHTML}</tbody>
+                </table>
+                <footer class="invoice-footer">
+                    <p>Thank you for your business!</p>
+                    <p>Generated by Advanced Service Invoice Generator on ${currentDate.toLocaleString()}</p>
+                </footer>`;
+            preview.classList.remove('hidden');
+        }
+
+        // --- Action Functions --- //
+
+        function generatePDF() {
+            if (!validateForm()) return;
+            updateInvoicePreview();
+            const element = document.getElementById('invoicePreview');
+            const customerName = document.getElementById('customerName').value;
+            const opt = { margin: 0.5, filename: `Invoice_${invoiceCounter}_${customerName.replace(/\s+/g, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+            html2pdf().set(opt).from(element).save().then(() => showToast('PDF generated successfully!', 'success'));
+        }
+
+        function printInvoice() {
+            if (!validateForm()) return;
+            updateInvoicePreview();
+            const printContent = document.getElementById('invoicePreview').innerHTML;
+            const originalContent = document.body.innerHTML;
+            document.body.innerHTML = `<div class="invoice-preview">${printContent}</div>`;
+            window.print();
+            document.body.innerHTML = originalContent;
+            location.reload();
+        }
+
+        function sendWhatsApp() {
+            if (!validateForm()) return;
+            const customerName = document.getElementById('customerName').value;
+            const customerWhatsApp = document.getElementById('customerWhatsApp').value;
+            const serviceType = document.getElementById('serviceType').value;
+
+            let itemsList = selectedItems.map(item => `• ${item.description} - Qty: ${item.quantity}`).join('\n');
+            const message = `🧾 *INVOICE SUMMARY*\n\n` +
+                          `*To*: ${customerName}\n` +
+                          `*Invoice #*: INV-${invoiceCounter}\n` +
+                          `*Service*: ${serviceType}\n\n` +
+                          `*ITEMS*:\n${itemsList}\n\n` +
+                          `Thank you for choosing ${document.getElementById('companyName').textContent}! 🙏`;
+            const whatsappUrl = `https://wa.me/${customerWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function saveInvoice() {
+            if (!validateForm()) return;
+            const invoice = {
+                invoiceNumber: invoiceCounter, date: new Date().toISOString(),
+                customerName: document.getElementById('customerName').value, customerAddress: document.getElementById('customerAddress').value,
+                customerWhatsApp: document.getElementById('customerWhatsApp').value, serviceType: document.getElementById('serviceType').value,
+                items: selectedItems, subtotal: parseFloat(document.getElementById('subtotal').textContent),
+                serviceFee: parseFloat(document.getElementById('serviceFee').textContent), taxPercent: parseFloat(document.getElementById('taxPercent').textContent),
+                taxAmount: parseFloat(document.getElementById('taxAmount').textContent), grandTotal: parseFloat(document.getElementById('grandTotal').textContent)
+            };
+            let history = JSON.parse(localStorage.getItem('svc_history') || '[]');
+            history.push(invoice);
+            localStorage.setItem('svc_history', JSON.stringify(history));
+            invoiceCounter++;
+            localStorage.setItem('svc_invoice_counter', invoiceCounter.toString());
+            loadHistory();
+            showToast('Invoice saved successfully!', 'success');
+            clearForm(false);
+        }
+
+        function clearForm(confirmFirst = false) {
+            const doClear = () => {
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerAddress').value = '';
+                document.getElementById('customerWhatsApp').value = '';
+                document.getElementById('serviceType').value = '';
+                document.getElementById('itemsTable').classList.add('hidden');
+                document.getElementById('invoicePreview').classList.add('hidden');
+                selectedItems = [];
+                updateTotals();
+                updateInvoiceNumberDisplay();
+                document.querySelectorAll('#itemsTableBody input[type="checkbox"]').forEach(cb => cb.checked = false);
+            };
+            if (confirmFirst) {
+                if (confirm('Are you sure you want to clear all fields?')) doClear();
+            } else {
+                doClear();
+            }
+        }
+        
+        // --- History Functions --- //
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('svc_history') || '[]');
+            const tableBody = document.getElementById('historyTableBody');
+            if (history.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No invoices found in history.</td></tr>';
+                return;
+            }
+            tableBody.innerHTML = '';
+            history.slice().reverse().forEach(invoice => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>INV-${invoice.invoiceNumber}</td>
+                    <td>${new Date(invoice.date).toLocaleDateString()}</td>
+                    <td>${invoice.customerName}</td>
+                    <td>${invoice.serviceType}</td>
+                    <td class="price">₹${invoice.grandTotal.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="viewInvoice(${invoice.invoiceNumber})" style="padding: 5px 10px; font-size: 12px;"><i class="fas fa-eye"></i> View</button>
+                        <button class="btn btn-danger" onclick="deleteInvoice(${invoice.invoiceNumber})" style="padding: 5px 10px; font-size: 12px;"><i class="fas fa-trash"></i> Delete</button>
+                    </td>`;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function viewInvoice(invoiceNumber) {
+            const history = JSON.parse(localStorage.getItem('svc_history') || '[]');
+            const invoice = history.find(inv => inv.invoiceNumber === invoiceNumber);
+            if (!invoice) { showToast('Invoice not found!', 'error'); return; }
+            
+            showTab('invoice');
+            document.getElementById('customerName').value = invoice.customerName;
+            document.getElementById('customerAddress').value = invoice.customerAddress;
+            document.getElementById('customerWhatsApp').value = invoice.customerWhatsApp;
+            document.getElementById('serviceType').value = invoice.serviceType;
+            
+            loadServiceItems();
+            selectedItems = [...invoice.items];
+
+            setTimeout(() => {
+                selectedItems.forEach(item => {
+                    const checkbox = document.getElementById(`item_${item.index}`);
+                    const qtyInput = document.getElementById(`qty_${item.index}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        qtyInput.disabled = false;
+                        qtyInput.value = item.quantity;
+                    }
+                });
+                document.getElementById('subtotal').textContent = invoice.subtotal.toFixed(2);
+                document.getElementById('serviceFee').textContent = invoice.serviceFee.toFixed(2);
+                document.getElementById('taxPercent').textContent = invoice.taxPercent;
+                document.getElementById('taxAmount').textContent = invoice.taxAmount.toFixed(2);
+                document.getElementById('grandTotal').textContent = invoice.grandTotal.toFixed(2);
+                document.getElementById('currentInvoiceNumber').textContent = `INV-${invoice.invoiceNumber}`;
+                updateInvoicePreview();
+            }, 100);
+        }
+
+        function deleteInvoice(invoiceNumber) {
+            if (confirm(`Are you sure you want to delete Invoice INV-${invoiceNumber}?`)) {
+                let history = JSON.parse(localStorage.getItem('svc_history') || '[]');
+                history = history.filter(invoice => invoice.invoiceNumber !== invoiceNumber);
+                localStorage.setItem('svc_history', JSON.stringify(history));
+                loadHistory();
+                showToast(`Invoice INV-${invoiceNumber} deleted.`, 'success');
+            }
+        }
+        
+        function clearHistory() {
+            if (confirm('Are you sure you want to delete ALL invoices from history? This action cannot be undone.')) {
+                localStorage.removeItem('svc_history');
+                loadHistory();
+                showToast('All invoice history has been cleared.', 'success');
+            }
+        }
+
+        function filterHistory() {
+            const searchTerm = document.getElementById('historySearch').value.toLowerCase();
+            document.querySelectorAll('#historyTableBody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        // --- Settings Functions --- //
+        
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('svc_settings') || '{}');
+            const defaults = {
+                companyName: 'TechService Pro', companyAddress: '123 Tech Street, Digital City, TC 12345',
+                companyContact: '📞 +1 (555) 123-4567 | 📧 info@techservice.com', companyWhatsApp: '💬 WhatsApp: +1 (555) 987-6543',
+                serviceFee: 500, taxPercent: 18
+            };
+            const finalSettings = { ...defaults, ...settings };
+            document.getElementById('companyName').textContent = finalSettings.companyName;
+            document.getElementById('companyAddress').textContent = finalSettings.companyAddress;
+            document.getElementById('companyContact').innerHTML = `<i class="fas fa-phone"></i> ${finalSettings.companyContact.split('|')[0]} | <i class="fas fa-envelope"></i> ${finalSettings.companyContact.split('|')[1] || ''}`;
+            document.getElementById('companyWhatsApp').innerHTML = `<i class="fab fa-whatsapp"></i> ${finalSettings.companyWhatsApp}`;
+            document.getElementById('serviceFee').textContent = finalSettings.serviceFee.toFixed(2);
+            document.getElementById('taxPercent').textContent = finalSettings.taxPercent;
+            
+            document.getElementById('settingsCompanyName').value = finalSettings.companyName;
+            document.getElementById('settingsCompanyAddress').value = finalSettings.companyAddress;
+            document.getElementById('settingsCompanyContact').value = finalSettings.companyContact;
+            document.getElementById('settingsCompanyWhatsApp').value = finalSettings.companyWhatsApp;
+            document.getElementById('settingsServiceFee').value = finalSettings.serviceFee;
+            document.getElementById('settingsTaxPercent').value = finalSettings.taxPercent;
+            updateTotals();
+        }
+
+        function saveSettings() {
+            const settings = {
+                companyName: document.getElementById('settingsCompanyName').value, companyAddress: document.getElementById('settingsCompanyAddress').value,
+                companyContact: document.getElementById('settingsCompanyContact').value, companyWhatsApp: document.getElementById('settingsCompanyWhatsApp').value,
+                serviceFee: parseFloat(document.getElementById('settingsServiceFee').value) || 0,
+                taxPercent: parseFloat(document.getElementById('settingsTaxPercent').value) || 0
+            };
+            localStorage.setItem('svc_settings', JSON.stringify(settings));
+            loadSettings();
+            showToast('Settings saved successfully!', 'success');
+        }
+
+        // --- Utility Functions --- //
+        
+        function updateInvoiceNumberDisplay() {
+            document.getElementById('currentInvoiceNumber').textContent = `INV-${invoiceCounter}`;
+        }
+
+        function validateForm() {
+            if (!document.getElementById('customerName').value.trim()) {
+                showToast('Please enter a customer name.', 'error');
+                return false;
+            }
+            if (selectedItems.length === 0) {
+                showToast('Please select at least one service item.', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-times-circle'}"></i> &nbsp; ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 5000);
+        }
+
+        // Auto-save draft
+        setInterval(() => {
+            if (document.getElementById('invoice-tab').classList.contains('active')) {
+                const draft = {
+                    customerName: document.getElementById('customerName').value, customerAddress: document.getElementById('customerAddress').value,
+                    customerWhatsApp: document.getElementById('customerWhatsApp').value, serviceType: document.getElementById('serviceType').value,
+                    selectedItems: selectedItems, timestamp: Date.now()
+                };
+                if (draft.customerName || draft.serviceType || draft.selectedItems.length > 0) {
+                    localStorage.setItem('svc_draft', JSON.stringify(draft));
+                }
+            }
+        }, 15000);
+
+        // Load draft on page load
+        window.addEventListener('load', () => {
+            const draft = JSON.parse(localStorage.getItem('svc_draft') || '{}');
+            if (draft.timestamp && (Date.now() - draft.timestamp) < 24 * 60 * 60 * 1000) {
+                if (confirm('An unsaved draft was found. Would you like to restore it?')) {
+                    document.getElementById('customerName').value = draft.customerName || '';
+                    document.getElementById('customerAddress').value = draft.customerAddress || '';
+                    document.getElementById('customerWhatsApp').value = draft.customerWhatsApp || '';
+                    document.getElementById('serviceType').value = draft.serviceType || '';
+                    if (draft.serviceType) {
+                        loadServiceItems();
+                        selectedItems = draft.selectedItems || [];
+                        setTimeout(() => {
+                            selectedItems.forEach(item => {
+                                const checkbox = document.getElementById(`item_${item.index}`);
+                                const qtyInput = document.getElementById(`qty_${item.index}`);
+                                if (checkbox) {
+                                    checkbox.checked = true;
+                                    qtyInput.disabled = false;
+                                    qtyInput.value = item.quantity;
+                                }
+                            });
+                            updateTotals();
+                            updateInvoicePreview();
+                        }, 100);
+                    }
+                    showToast('Draft restored successfully.', 'success');
+                }
+                localStorage.removeItem('svc_draft');
+            }
+        });
+    </script>
+</body>
+</html>
